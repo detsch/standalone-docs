@@ -3,8 +3,8 @@ title: Flash UNO Q and Connect to the Board
 description: Flash the Qualcomm Linux image, access UNO Q with or without a Bughopper, and connect to the network.
 type: page
 doc-category: instructional
-authors: David Griego, Caio Pereira, Codex:GPT-6
-last-edited: 2026-10-28
+authors: David Griego, Caio Pereira, Codex:GPT-6, Andre Detsch, Claude:Opus-5.5
+last-edited: 2026-11-09
 license: MIT
 access: public
 references:
@@ -27,7 +27,7 @@ Complete [the image build](build.md) first.
 On your local x86-64 Linux® computer, open a Bash shell in the guide directory and set `GUIDE_DIR` to its absolute path.
 Confirm that `workspace/unoq-os1-flash.tar.gz` and `workspace/releases/1/ostree_repo` are available there.
 
-Choose Bughopper serial access or Android Debug Bridge (ADB), then connect Arduino® UNO Q to your network.
+Choose Bughopper serial access, Android Debug Bridge (ADB), or an HDMI display and keyboard, then connect Arduino® UNO Q to your network.
 The board will run Qualcomm® Linux® (QLI) after flashing.
 
 > **Validation status:** The Bughopper flashing and serial-console steps completed on an UNO Q on October 11 and 13, 2026, with the previous revision's edk2 UEFI boot chain.
@@ -42,6 +42,9 @@ The board will run Qualcomm® Linux® (QLI) after flashing.
 ## Prepare the Equipment and Flashing Tools
 
 You need an UNO Q, a USB-C data cable, and a network the board can join.
+Some USB-C cables carry only power.
+With such a cable the board powers up, but the computer logs no USB event at all, in EDL mode or after boot.
+If `journalctl -k` on the computer shows no new USB device when you connect the board, try another cable before anything else.
 For Bughopper boot control and serial access, add a Bughopper and a second USB data cable.
 Without a Bughopper, keep a jumper cap or female-to-female jumper available for Emergency Download (EDL) mode.
 
@@ -151,12 +154,33 @@ sudo usermod -aG dialout "$USER"
 After flashing, this console displays boot output and provides a Linux shell.
 The supplied development configuration enables root serial autologin.
 
+The `JCTL` console signals use 1.8 V logic.
+A generic 3.3 V USB-to-serial adapter, such as a PL2303 cable, can't read them: the terminal shows only zero bytes or nothing.
+Use a Bughopper or a 1.8 V adapter; don't connect an adapter's transmit line to the board without level shifting.
+
 #### Without a Bughopper
 
-The build configuration enables `image-adbd` and `enable-adbd` and installs the `libcomposite` and `usb_f_fs` kernel modules that the ADB USB gadget uses.
+The guide's build configuration enables `image-adbd` and `enable-adbd` and installs the `libcomposite` and `usb_f_fs` kernel modules that the ADB USB gadget uses.
 Keep the UNO Q's USB-C data cable connected after flashing.
 After QLI boots, use ADB to open a shell as described below.
 ADB becomes available after Linux starts; a Bughopper can also show earlier boot output.
+
+ADB comes from the guide's `kas/uno-q-wrynose.yml`, not from meta-foundries itself.
+An image built from meta-foundries' `ci/uno-q.yml` alone, such as an image from meta-foundries' continuous integration, has no ADB.
+For such an image, use a Bughopper or the HDMI console below.
+
+#### With an HDMI Display and a USB Keyboard
+
+The UNO Q's USB-C port can also drive a USB-C hub with HDMI output.
+After flashing, connect a hub with an HDMI display and a USB keyboard to the UNO Q's USB-C port, and power the hub through its USB-C Power Delivery (PD) input.
+The board shows a login prompt on the display after boot; log in as `root`, which has no password in this development image.
+This console doesn't show early boot output.
+
+Many hubs include an Ethernet port with a Realtek RTL8153 chip.
+The image doesn't include its `r8152` driver, so that port doesn't work; connect the board through Wi-Fi as described below.
+
+If you set up more than one board with a single hub, check which board the hub is connected to before typing commands.
+Every board boots with the hostname `uno-q`, so the prompt doesn't tell them apart.
 
 ### Enter EDL Mode
 
@@ -243,8 +267,12 @@ tar -xzf "$GUIDE_DIR/workspace/unoq-os1-flash.tar.gz" \
 
 ```bash
 cd "$GUIDE_DIR/workspace/flash-os1/core-image-full-cmdline-uno-q.rootfs.qcomflash"
-qdl --storage emmc --serial "$UNOQ_EDL_SERIAL" --debug prog_firehose_ddr.elf rawprogram0.xml patch0.xml
+qdl --storage emmc --serial "$UNOQ_EDL_SERIAL" prog_firehose_ddr.elf rawprogram0.xml patch0.xml
 ```
+
+`--storage emmc` is required: `qdl` defaults to UFS storage, and without the option it stops with `ERR: failed to setup programming`.
+A successful run ends with a summary line such as `flashed 38 partitions (1.9 GiB written in 1 min 1 s, 31.7 MiB/s), applied 13 patches`.
+If flashing fails, repeat the command with `--debug` added; it prints every firehose exchange, so keep that output for a bug report rather than reading it in full.
 
 Use the [Arduino USB permissions setup](https://docs.arduino.cc/software/app-lab/setup/linux/)
 if `qdl` reports insufficient permissions.
@@ -268,7 +296,8 @@ and reconnect the board for normal boot.
 ### Open the QLI Shell and Connect Wi-Fi
 
 With a Bughopper, use the serial shell.
-Without one, run these commands on the host after the board finishes booting:
+With an HDMI display and keyboard, log in as `root` on the display.
+Otherwise, run these commands on the host after the board finishes booting:
 
 ```bash
 adb devices
@@ -308,6 +337,15 @@ export UNOQ_DEVICE_IP='PASTE_THE_BOARD_IP'
 The board's clock can take tens of seconds to synchronize after Wi-Fi connects.
 Run `date -u` on the local computer too, and repeat `date -u` on the board until the two agree to within a few seconds.
 Enroll the board only after its clock is correct.
+
+If you set up more than one board, give each one its own hostname so that prompts and logs tell them apart:
+
+```bash
+hostnamectl set-hostname unoq-01
+```
+
+Use `unoq-02` for the second board, and so on.
+The hostname is stored in `/etc`, which OS updates preserve.
 
 ### Verify the Selected Memory Workaround
 

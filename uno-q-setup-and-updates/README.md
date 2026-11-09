@@ -3,8 +3,8 @@ title: Set Up UNO Q with Qualcomm Linux and a Local Update Server
 description: Build, flash, register, select applications, and deliver OS and application updates to Arduino UNO Q.
 type: page
 doc-category: informational
-authors: David Griego, Codex:GPT-6
-last-edited: 2026-10-28
+authors: David Griego, Codex:GPT-6, Andre Detsch, Claude:Opus-5.5
+last-edited: 2026-11-09
 license: MIT
 access: public
 references:
@@ -77,6 +77,7 @@ The example also uses `8080`, on the **board's IP address**.
 
 ## Supporting Pages
 
+- [Quick reference](quick-reference.md): the commands in order, with expected results
 - [Troubleshooting](troubleshooting.md)
 - [Sources and validation](validation.md)
 

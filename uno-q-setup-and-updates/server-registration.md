@@ -3,8 +3,8 @@ title: Set Up the Server and Register UNO Q
 description: Run the local update server, register the device, and select its applications.
 type: page
 doc-category: instructional
-authors: David Griego, Codex:GPT-6
-last-edited: 2026-10-28
+authors: David Griego, Codex:GPT-6, Andre Detsch, Claude:Opus-5.5
+last-edited: 2026-11-09
 license: MIT
 access: public
 references:
@@ -192,6 +192,8 @@ DEVICE_FACTORY=unoq-lab fio-device-register \
 
 Open the authorization link printed by the command in your computer's browser.
 Sign in to the local update server, enter the displayed code if requested, and approve this device.
+Approve it promptly: the code expires after 10 minutes, and `fio-device-register` then fails and must be run again for a new code.
+After you sign in, the page may no longer show the code; open `http://unoq-update.test:8080/auth/activate?user_code=CODE` with the printed code to fill it in.
 Wait for `fio-device-register` to report success on the board.
 Its `Device Name:` line may show the device's identifier in place of its name; the server still lists the device as `unoq-01`.
 The `wrynose` tag must match the updates you upload later.
@@ -284,6 +286,17 @@ For later changes, use these alternatives:
 For example, `fiocli configs updates --device "$UNOQ_UUID" --apps ','` disables all applications.
 Changing the selection does not create application content; selected names must exist in the update.
 Allow the configuration client and updater time to poll the server.
+
+## Register More Boards
+
+To use more than one UNO Q with the same server, repeat [registration](#register-the-uno-q) on each board with its own name, for example `--name=unoq-02`.
+Each board needs the same `/etc/hosts` entry for `unoq-update.test`.
+Record each board's UUID from `fiocli devices list`, for example as `UNOQ_UUID_2`.
+`fiocli devices list` shows UUIDs, not names; match each UUID to a board with the **Devices** page of the server UI.
+Then select applications for each UUID with `fiocli configs updates`, as for the first board.
+
+A rollout reaches only the UUIDs it names.
+To update boards in stages, create one rollout per stage, as described in [the version 2 update](application-updates.md#upload-and-roll-out-version-2).
 
 ## Stop and Restart the Local Server
 

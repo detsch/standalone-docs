@@ -3,8 +3,8 @@ title: Troubleshoot the UNO Q Walkthrough
 description: Checks for build, console, enrollment, networking, and application update failures.
 type: page
 doc-category: informational
-authors: David Griego, Codex:GPT-6
-last-edited: 2026-10-28
+authors: David Griego, Codex:GPT-6, Andre Detsch, Claude:Opus-5.5
+last-edited: 2026-11-09
 license: MIT
 access: public
 references:
@@ -39,14 +39,22 @@ relations:
 | `pytactl list` finds no Bughopper | Check its USB data cable and connection; confirm the installed `pytactl` version and inspect the host's USB enumeration. |
 | `pytactl` reports access denied or a missing native library | Complete [Bughopper tool installation](flash.md#install-bughopper-tools), including native libraries and device permissions; reconnect Bughopper after installing the rules. |
 | `qdl` waits for a device | Complete [Emergency Download (EDL) entry](flash.md#enter-edl-mode) using Bughopper or a jumper, and allow up to 15 seconds for the board to appear. Verify `05c6:9008`, the UNO Q USB-C data cable, and host USB permissions. |
+| Nothing appears on the computer when the board is connected, not even in `journalctl -k` | The USB-C cable carries power only. Use a data cable; without one the computer logs no USB event in any mode. Connecting the board directly to the computer, rather than through a dock, also rules out the dock. |
+| `qdl` stops with `ERR: failed to setup programming` | Add `--storage emmc`. `qdl` defaults to UFS storage, and the UNO Q uses eMMC. |
 | `qdl --version` prints an older version | Another `qdl` comes first on `PATH`. Repeat the [`qdl` installation](flash.md#prepare-the-equipment-and-flashing-tools) `export PATH` line in this shell. |
 | Board stays in EDL after flashing with Bughopper | After `qdl` succeeds, run `pytactl oneshot reset --serial "$BUGHOPPER_SERIAL"` on the host to clear EDL and boot normally. |
 | No Android Debug Bridge (ADB) device after boot | Check that the flashed image contains the enabled ADB configuration; verify USB permissions and normal boot rather than EDL. On the board, `journalctl -u android-tools-adbd` reporting `Module libcomposite not found` means the image lacks the USB gadget modules; rebuild with the guide's `kas/uno-q-wrynose.yml`. |
 | Serial output is unreadable or input fails | Verify the Bughopper port, 115200/8N1 settings, and disabled hardware/software flow control. |
+| A USB-to-serial cable on `JCTL` shows only zero bytes or nothing | The `JCTL` console uses 1.8 V logic, which a 3.3 V adapter such as a PL2303 can't read. Use a Bughopper or a 1.8 V adapter, or the [HDMI console](flash.md#with-an-hdmi-display-and-a-usb-keyboard). |
+| No ADB device with an image built from meta-foundries' `ci/uno-q.yml`, including its CI images | Those images don't enable ADB; only the guide's `kas/uno-q-wrynose.yml` adds it. Use a Bughopper or the HDMI console. |
+| A USB-C hub's Ethernet port shows no network interface on the board | Most hubs use a Realtek RTL8153 chip, and the image doesn't include its `r8152` driver. Connect through Wi-Fi. |
+| Commands ran on the wrong board | With one hub or console moved between boards, check which board it's connected to. Every board boots as `uno-q`; set a distinct hostname on each with `hostnamectl set-hostname`. |
 | The serial console stops responding to commands after `nmcli` | `nmcli` opened a pager. Press `q`, then repeat the command with `\| cat`. |
 | `getent: command not found` on the board | The board's image has no `getent`. Use the `grep` and `ping` checks from [the name check](server-registration.md#give-the-server-a-name-reachable-from-the-board). |
 | `curl: command not found` on the board | The board's image has no `curl`. Run the HTTP checks from the computer with the board's IP address. |
 | Enrollment page opens but registration fails | Read the board's command result; check clock, server-terminal logs, and duplicate device name. |
+| `fio-device-register` fails after waiting for authorization | The code expired: codes are valid for 10 minutes. Run the command again and approve the new code promptly. |
+| The authorization page asks for a code that was no longer shown after signing in | Open `http://unoq-update.test:8080/auth/activate?user_code=CODE` with the code that `fio-device-register` or `fiocli login` printed. |
 | Board cannot reach the server | Check the local-network IP address, hosts entry, listening ports, host firewall, and Wi-Fi client isolation. |
 | TLS hostname error | Verify that `devserver-init --dnsname` matches the hostname in device configuration and hosts entries. |
 | CLI works, but no device heartbeat | Check Transmission Control Protocol (TCP) port 8443 and certificate hostname resolution on the board; CLI access only establishes the 8080 path. |

@@ -3,8 +3,8 @@ title: Deploy and Update Applications on UNO Q
 description: Deploy shellhttpd, update the OS and app, add a second app, and update an app without changing the OS.
 type: page
 doc-category: instructional
-authors: David Griego, Codex:GPT-6
-last-edited: 2026-10-28
+authors: David Griego, Codex:GPT-6, Andre Detsch, Claude:Opus-5.5
+last-edited: 2026-11-09
 license: MIT
 access: public
 references:
@@ -343,6 +343,18 @@ Confirm all of the following:
 
 If M-05 was selected, repeat the [booted memory-reservation check](flash.md#verify-the-selected-memory-workaround)
 before continuing with application-only updates.
+
+With more than one registered board, update them in stages: roll out to one board first, confirm the checks above on it, then roll out the same update to the others.
+A rollout reaches only the UUIDs it names, so each stage is a new rollout of the same update:
+
+```bash
+fiocli updates create-rollout unoq-002 second-version-rest \
+  --uuids "$UNOQ_UUID_2"
+fiocli updates show-rollout unoq-002 second-version-rest
+```
+
+`show-rollout` reports `Installation completed; succeeded: 1` once the board has rebooted into the new OS and finalized it.
+To install sooner than the next five-minute check, run `systemctl restart aktualizr-lite` on the board after creating the rollout.
 
 For future updates, use a new update name and a strictly increasing `--version`.
 Increase that version even when only the app changes and the OS stays the same.
